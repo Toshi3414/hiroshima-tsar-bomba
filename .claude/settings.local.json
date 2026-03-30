@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(open:*)",
+      "Bash(gh auth:*)",
+      "Bash(npm create vite@latest voidarcade -- --template react)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

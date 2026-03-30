@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Little Boy — Radiation Zones over Hiroshima</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #sidebar {
+      width: 380px;
+      min-width: 380px;
+      background: #111118;
+      border-right: 1px solid #2a2a35;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .nav-link {
+      display: block;
+      padding: 10px 20px;
+      font-size: 0.72rem;
+      color: #6a8cff;
+      text-decoration: none;
+      border-bottom: 1px solid #2a2a35;
+      transition: background 0.15s;
+    }
+
+    .nav-link:hover { background: #1a1a28; color: #8aa8ff; }
+
+    #sidebar h1 {
+      font-size: 1.15rem;
+      padding: 20px 20px 6px;
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    #sidebar .subtitle {
+      padding: 0 20px 16px;
+      font-size: 0.78rem;
+      color: #888;
+      line-height: 1.45;
+      border-bottom: 1px solid #2a2a35;
+    }
+
+    .zone-btn {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 20px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      text-align: left;
+      color: #ccc;
+      border-bottom: 1px solid #1a1a25;
+      transition: background 0.15s;
+      width: 100%;
+    }
+
+    .zone-btn:hover { background: #1a1a28; }
+    .zone-btn.active { background: #1c1c30; }
+
+    .zone-dot {
+      width: 14px;
+      height: 14px;
+      min-width: 14px;
+      border-radius: 50%;
+      margin-top: 3px;
+    }
+
+    .zone-btn-text .zone-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .zone-btn-text .zone-radius {
+      font-size: 0.72rem;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    #zone-detail {
+      background: #16161f;
+      border-top: 1px solid #2a2a35;
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease, padding 0.35s ease;
+    }
+
+    #zone-detail.open {
+      max-height: 600px;
+      padding: 18px 20px;
+    }
+
+    #zone-detail h2 {
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #zone-detail .detail-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    #zone-detail .section-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #666;
+      margin-top: 12px;
+      margin-bottom: 4px;
+    }
+
+    #zone-detail p {
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: #bbb;
+    }
+
+    #zone-detail .dose-badge {
+      display: inline-block;
+      background: #1a1a2a;
+      color: #a88fff;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 6px;
+    }
+
+    #map {
+      flex: 1;
+      height: 100vh;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: #1a1a25;
+      color: #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    .leaflet-popup-tip { background: #1a1a25; }
+
+    .legend {
+      background: rgba(17,17,24,0.92);
+      backdrop-filter: blur(8px);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #ccc;
+      font-size: 0.75rem;
+      line-height: 1.8;
+      border: 1px solid #2a2a35;
+    }
+
+    .legend-title {
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+      font-size: 0.8rem;
+    }
+
+    .legend i {
+      width: 12px;
+      height: 12px;
+      display: inline-block;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    @media (max-width: 800px) {
+      body { flex-direction: column; }
+      #sidebar {
+        width: 100%;
+        min-width: 100%;
+        height: 45vh;
+        border-right: none;
+        border-bottom: 1px solid #2a2a35;
+      }
+      #map { height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <a href="index.html" class="nav-link">&larr; Tsar Bomba over Hiroshima</a>
+    <h1>Little Boy — Radiation Zones</h1>
+    <p class="subtitle">
+      Initial ionizing radiation (gamma &amp; neutron) from the 15-kiloton Little Boy uranium bomb,
+      detonated at ~580 m altitude above Shima Hospital on 6 August 1945
+      (34.3946&deg;N, 132.4543&deg;E). Doses are free-in-air kerma for unshielded persons,
+      based on DS02 dosimetry.
+    </p>
+    <div id="zone-buttons"></div>
+    <div id="zone-detail"></div>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const HYPOCENTER = [34.3946, 132.4543];
+
+    const ZONES = [
+      {
+        id: "fireball",
+        name: "Fireball",
+        radius: 180,
+        color: "#ff1100",
+        fillOpacity: 0.40,
+        description: "The nuclear fireball reached a radius of roughly 180 meters within the first second. Temperatures inside the fireball exceeded several million degrees Celsius, emitting an intense burst of X-rays and thermal radiation.",
+        symptoms: "Instant death. All persons within the fireball were vaporized or carbonized within milliseconds. No identifiable human remains survived this zone.",
+        dose: "> 500 Gy",
+        impact: "Total annihilation. Buildings, trees, and people ceased to exist. The ground beneath was superheated. The fireball was visible as a blinding flash across Hiroshima."
+      },
+      {
+        id: "supralethal",
+        name: "Supralethal Radiation",
+        radius: 500,
+        color: "#ff4400",
+        fillOpacity: 0.30,
+        description: "Within 500 m of the hypocenter, the combined gamma and neutron radiation delivered a supralethal dose — far exceeding what any living tissue can withstand. Death was certain and rapid for anyone in the open.",
+        symptoms: "Cerebrovascular and CNS syndrome: disorientation, tremors, convulsions, loss of consciousness within minutes. Death from brain and cardiovascular collapse within hours, often before other radiation symptoms can develop.",
+        dose: "> 50 Gy",
+        impact: "100% mortality, even with modern medical treatment. Most victims in this zone also suffered lethal blast and thermal injuries. Buildings were completely destroyed."
+      },
+      {
+        id: "lethal-gi",
+        name: "Lethal — GI Syndrome",
+        radius: 1000,
+        color: "#ff8800",
+        fillOpacity: 0.22,
+        description: "At 500–1,000 m, the initial radiation pulse delivered doses high enough to destroy the gastrointestinal lining. Even people who survived the blast and fire succumbed to radiation within days to weeks.",
+        symptoms: "Gastrointestinal syndrome: severe nausea and vomiting within 1 hour, bloody diarrhea within days, massive dehydration, sepsis from gut bacteria entering the bloodstream. Death within 1–2 weeks.",
+        dose: "8 – 50 Gy",
+        impact: "Near-100% fatality. The GI tract lining is destroyed faster than it can regenerate. No effective treatment existed in 1945 — survival is extremely rare even with modern intensive care."
+      },
+      {
+        id: "severe-ars",
+        name: "Severe ARS — LD₉₀",
+        radius: 1300,
+        color: "#ffcc00",
+        fillOpacity: 0.17,
+        description: "At roughly 1,000–1,300 m, the radiation dose was high enough to cause severe Acute Radiation Syndrome. Without medical treatment, approximately 90% of exposed persons died.",
+        symptoms: "Hematopoietic syndrome (severe): nausea and vomiting within 1–2 hours, a latent period of apparent recovery lasting days, then catastrophic bone marrow failure — hemorrhaging, severe infections, hair loss. Death within 2–6 weeks.",
+        dose: "4 – 8 Gy",
+        impact: "LD₉₀ without treatment. Bone marrow is devastated, making it impossible to produce new blood cells. Modern stem cell transplants could save some, but no such treatment existed in 1945."
+      },
+      {
+        id: "moderate-ars",
+        name: "Moderate ARS — LD₅₀",
+        radius: 1700,
+        color: "#44dd44",
+        fillOpacity: 0.14,
+        description: "At 1,300–1,700 m from the hypocenter, the radiation dose was around the LD₅₀ threshold — the dose at which half of exposed individuals die without medical intervention.",
+        symptoms: "Hematopoietic syndrome (moderate): nausea within 2–4 hours, latent period of 1–3 weeks, then declining white blood cell and platelet counts. Infections and bleeding become life-threatening. Hair loss, fatigue, fever.",
+        dose: "1 – 4 Gy",
+        impact: "Approximately 50% mortality without treatment. Many Hiroshima survivors in this zone initially appeared uninjured but developed fatal radiation sickness in the following weeks — a phenomenon that baffled doctors at the time."
+      },
+      {
+        id: "mild-ars",
+        name: "Mild ARS — Recoverable",
+        radius: 2000,
+        color: "#00bbcc",
+        fillOpacity: 0.11,
+        description: "At 1,700–2,000 m, the radiation dose produced recognizable but generally survivable symptoms. Most exposed persons eventually recovered, though with increased long-term cancer risk.",
+        symptoms: "Mild ARS: nausea, occasional vomiting, fatigue within hours. Blood cell counts drop moderately over weeks but recover. Temporary hair thinning. Full recovery expected within 2–3 months for most.",
+        dose: "0.5 – 1 Gy",
+        impact: "Most people survive with supportive care, though the immune system is temporarily weakened. Long-term follow-up by the ABCC/RERF showed significantly elevated rates of leukemia and solid cancers in this cohort."
+      },
+      {
+        id: "subclinical",
+        name: "Subclinical Exposure",
+        radius: 2500,
+        color: "#4488ff",
+        fillOpacity: 0.08,
+        description: "At 2,000–2,500 m, the radiation dose was below the threshold for acute symptoms in most people but was still biologically significant. Exposed individuals generally felt no immediate illness.",
+        symptoms: "No acute symptoms in most people. Some may experience transient nausea. Blood counts may show minor, temporary changes detectable only by laboratory testing. No hair loss or visible effects.",
+        dose: "0.1 – 0.5 Gy",
+        impact: "No immediate deaths from radiation at this distance. However, the Life Span Study of Hiroshima survivors demonstrated a measurable increase in cancer incidence — particularly leukemia, thyroid, breast, and lung cancers — beginning 2–5 years after exposure."
+      },
+      {
+        id: "low-level",
+        name: "Low-Level — Elevated Cancer Risk",
+        radius: 3200,
+        color: "#aa66ff",
+        fillOpacity: 0.05,
+        description: "Beyond 2,500 m, the initial radiation dose dropped to low levels. Acute effects were absent, but the dose was still above natural background and contributed to a statistically detectable increase in lifetime cancer risk.",
+        symptoms: "No acute symptoms. No detectable changes in blood counts. Effects are purely stochastic — a slightly increased probability of developing cancer over a lifetime, with no way to attribute any individual case to the bombing.",
+        dose: "0.01 – 0.1 Gy",
+        impact: "The RERF Life Span Study has tracked survivors at these distances for decades, revealing that even low doses carry a small but real excess cancer risk. This data forms the foundation of modern radiation protection standards worldwide."
+      }
+    ];
+
+    // ── Map ──
+    const map = L.map("map", {
+      center: HYPOCENTER,
+      zoom: 14,
+      zoomControl: true,
+      attributionControl: true
+    });
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://osm.org/copyright">OSM</a>',
+      subdomains: "abcd",
+      maxZoom: 19
+    }).addTo(map);
+
+    // Hypocenter marker
+    const hypocenterIcon = L.divIcon({
+      className: "",
+      html: `<div style="
+        width:16px;height:16px;background:#ff1100;border:2px solid #fff;
+        border-radius:50%;box-shadow:0 0 12px #ff1100, 0 0 30px rgba(255,17,0,0.4);
+      "></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
+
+    L.marker(HYPOCENTER, { icon: hypocenterIcon })
+      .addTo(map)
+      .bindPopup(
+        `<div style="font-size:13px;line-height:1.5">
+          <strong>Hypocenter — Little Boy</strong><br>
+          6 August 1945, 08:15 JST<br>
+          ~15 kT uranium gun-type fission bomb<br>
+          Detonation altitude: ~580 m<br>
+          <span style="color:#999;font-size:11px">34.3946&deg;N, 132.4543&deg;E<br>Above Shima Hospital, Hiroshima</span>
+        </div>`
+      );
+
+    // Draw zones (largest first so smaller ones render on top)
+    const circles = {};
+    [...ZONES].reverse().forEach(zone => {
+      circles[zone.id] = L.circle(HYPOCENTER, {
+        radius: zone.radius,
+        color: zone.color,
+        weight: 1.5,
+        fillColor: zone.color,
+        fillOpacity: zone.fillOpacity,
+        dashArray: zone.radius > 2500 ? "6 4" : null
+      }).addTo(map);
+    });
+
+    // ── Legend ──
+    const legend = L.control({ position: "bottomright" });
+    legend.onAdd = function () {
+      const div = L.DomUtil.create("div", "legend");
+      div.innerHTML = `<div class="legend-title">Little Boy (15 kT) Radiation</div>`;
+      ZONES.forEach(z => {
+        const label = z.radius >= 1000 ? (z.radius / 1000) + " km" : z.radius + " m";
+        div.innerHTML += `<div><i style="background:${z.color}"></i>${z.name} — ${label}</div>`;
+      });
+      return div;
+    };
+    legend.addTo(map);
+
+    // ── Sidebar Buttons ──
+    const btnContainer = document.getElementById("zone-buttons");
+    const detailPanel = document.getElementById("zone-detail");
+    let activeZoneId = null;
+
+    ZONES.forEach(zone => {
+      const btn = document.createElement("button");
+      btn.className = "zone-btn";
+      btn.dataset.id = zone.id;
+      const label = zone.radius >= 1000 ? (zone.radius / 1000) + " km" : zone.radius + " m";
+      btn.innerHTML = `
+        <div class="zone-dot" style="background:${zone.color}"></div>
+        <div class="zone-btn-text">
+          <div class="zone-name">${zone.name}</div>
+          <div class="zone-radius">${label} radius</div>
+        </div>
+      `;
+      btn.addEventListener("click", () => selectZone(zone));
+      btnContainer.appendChild(btn);
+    });
+
+    function selectZone(zone) {
+      if (activeZoneId === zone.id) {
+        activeZoneId = null;
+        detailPanel.classList.remove("open");
+        document.querySelectorAll(".zone-btn").forEach(b => b.classList.remove("active"));
+        map.flyTo(HYPOCENTER, 14, { duration: 0.8 });
+        resetCircleStyles();
+        return;
+      }
+
+      activeZoneId = zone.id;
+
+      document.querySelectorAll(".zone-btn").forEach(b => {
+        b.classList.toggle("active", b.dataset.id === zone.id);
+      });
+
+      resetCircleStyles();
+      circles[zone.id].setStyle({ weight: 3, fillOpacity: zone.fillOpacity + 0.15 });
+
+      map.flyToBounds(circles[zone.id].getBounds().pad(0.15), { duration: 0.8 });
+
+      detailPanel.innerHTML = `
+        <h2><span class="detail-dot" style="background:${zone.color}"></span>${zone.name}</h2>
+        <p>${zone.description}</p>
+        <div class="section-label">Symptoms &amp; Health Effects</div>
+        <p>${zone.symptoms}</p>
+        <div class="dose-badge">${zone.dose}</div>
+        <div class="section-label">Impact</div>
+        <p>${zone.impact}</p>
+      `;
+      detailPanel.classList.add("open");
+    }
+
+    function resetCircleStyles() {
+      ZONES.forEach(z => {
+        circles[z.id].setStyle({ weight: 1.5, fillOpacity: z.fillOpacity });
+      });
+    }
+  </script>
+</body>
+</html>

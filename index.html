@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tsar Bomba Over Hiroshima — Blast &amp; Radiation Zones</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #sidebar {
+      width: 380px;
+      min-width: 380px;
+      background: #111118;
+      border-right: 1px solid #2a2a35;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    #sidebar h1 {
+      font-size: 1.15rem;
+      padding: 20px 20px 6px;
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    #sidebar .subtitle {
+      padding: 0 20px 16px;
+      font-size: 0.78rem;
+      color: #888;
+      line-height: 1.45;
+      border-bottom: 1px solid #2a2a35;
+    }
+
+    .zone-btn {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 20px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      text-align: left;
+      color: #ccc;
+      border-bottom: 1px solid #1a1a25;
+      transition: background 0.15s;
+      width: 100%;
+    }
+
+    .zone-btn:hover { background: #1a1a28; }
+    .zone-btn.active { background: #1c1c30; }
+
+    .zone-dot {
+      width: 14px;
+      height: 14px;
+      min-width: 14px;
+      border-radius: 50%;
+      margin-top: 3px;
+    }
+
+    .zone-btn-text .zone-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .zone-btn-text .zone-radius {
+      font-size: 0.72rem;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    #zone-detail {
+      background: #16161f;
+      border-top: 1px solid #2a2a35;
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease, padding 0.35s ease;
+    }
+
+    #zone-detail.open {
+      max-height: 600px;
+      padding: 18px 20px;
+    }
+
+    #zone-detail h2 {
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #zone-detail .detail-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    #zone-detail .section-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #666;
+      margin-top: 12px;
+      margin-bottom: 4px;
+    }
+
+    #zone-detail p {
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: #bbb;
+    }
+
+    #zone-detail .dose-badge {
+      display: inline-block;
+      background: #2a1a1a;
+      color: #f88;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 6px;
+    }
+
+    #map {
+      flex: 1;
+      height: 100vh;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: #1a1a25;
+      color: #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    .leaflet-popup-tip { background: #1a1a25; }
+
+    .legend {
+      background: rgba(17,17,24,0.92);
+      backdrop-filter: blur(8px);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #ccc;
+      font-size: 0.75rem;
+      line-height: 1.8;
+      border: 1px solid #2a2a35;
+    }
+
+    .legend-title {
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+      font-size: 0.8rem;
+    }
+
+    .legend i {
+      width: 12px;
+      height: 12px;
+      display: inline-block;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    @media (max-width: 800px) {
+      body { flex-direction: column; }
+      #sidebar {
+        width: 100%;
+        min-width: 100%;
+        height: 45vh;
+        border-right: none;
+        border-bottom: 1px solid #2a2a35;
+      }
+      #map { height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <a href="littleboy.html" style="display:block;padding:10px 20px;font-size:0.72rem;color:#6a8cff;text-decoration:none;border-bottom:1px solid #2a2a35;transition:background 0.15s;" onmouseover="this.style.background='#1a1a28'" onmouseout="this.style.background='none'">Little Boy — Radiation Zones &rarr;</a>
+    <h1>Tsar Bomba over Hiroshima</h1>
+    <p class="subtitle">
+      50-megaton blast &amp; radiation zones overlaid on the 1945 atomic bomb hypocenter
+      (34.3946&deg;N, 132.4543&deg;E &mdash; above Shima Hospital).
+    </p>
+    <div id="zone-buttons"></div>
+    <div id="zone-detail"></div>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const HYPOCENTER = [34.3946, 132.4543];
+
+    const ZONES = [
+      {
+        id: "fireball",
+        name: "Fireball",
+        radius: 3500,
+        color: "#ff3300",
+        fillOpacity: 0.35,
+        description: "Total vaporization. Everything within this radius is consumed by the nuclear fireball — temperatures exceed tens of millions of degrees. No material structure survives.",
+        symptoms: "Instant death. All matter — human tissue, steel, concrete — is vaporized within milliseconds. No remains are left.",
+        dose: "> 10,000 Gy",
+        impact: "Complete annihilation. The fireball extends 3.5 km in every direction from the detonation point. Within this zone the ground itself is turned to glass."
+      },
+      {
+        id: "lethal-radiation",
+        name: "Lethal Ionizing Radiation",
+        radius: 7500,
+        color: "#ff4444",
+        fillOpacity: 0.22,
+        description: "Lethal dose of initial nuclear radiation. Even without blast or thermal injuries, the ionizing radiation alone is fatal to all exposed persons.",
+        symptoms: "Acute Radiation Syndrome (ARS): nausea and vomiting within minutes, bloody diarrhea, seizures, cardiovascular collapse. Death occurs within hours to days. Bone marrow is completely destroyed.",
+        dose: "> 8 Gy (800 rad)",
+        impact: "100% fatality rate with or without medical treatment. The initial gamma and neutron radiation pulse delivers a supralethal dose to anyone in the open."
+      },
+      {
+        id: "severe-blast",
+        name: "Severe Air Blast",
+        radius: 12500,
+        color: "#ff8800",
+        fillOpacity: 0.16,
+        description: "Overpressure exceeds 20 psi. Reinforced concrete buildings are demolished. Combined blast and radiation injuries make survival effectively impossible.",
+        symptoms: "Severe blast injuries: ruptured lungs and eardrums, internal hemorrhaging, crush injuries from collapsing structures. Radiation dose causes ARS with bone marrow failure.",
+        dose: "4 – 8 Gy",
+        impact: "Near-total fatality. All above-ground structures including reinforced concrete are destroyed. Survivors in deep underground shelters may receive treatable radiation doses but face total infrastructure loss."
+      },
+      {
+        id: "complete-destruction",
+        name: "Complete Destruction Zone",
+        radius: 25000,
+        color: "#ffaa00",
+        fillOpacity: 0.12,
+        description: "Overpressure of 5–12 psi. All residential and commercial buildings are destroyed or rendered structurally unsound. Firestorms are likely.",
+        symptoms: "Blast injuries from flying debris, crush injuries, severe burns. Radiation exposure at 1–4 Gy causes hematopoietic syndrome: immune suppression, increased infection risk, bleeding disorders. Onset 1–6 hours post-exposure.",
+        dose: "1 – 4 Gy",
+        impact: "Most fatalities result from blast and fire. Survivors suffer combined injuries that overwhelm medical capacity. Recovery requires months of intensive care; many develop long-term cancers."
+      },
+      {
+        id: "heavy-structural",
+        name: "Heavy Structural Damage",
+        radius: 35000,
+        color: "#ddaa00",
+        fillOpacity: 0.10,
+        description: "5 psi overpressure zone. Wooden-frame buildings are completely destroyed. Brick and concrete structures suffer severe to total structural failure.",
+        symptoms: "Moderate blast injuries, lacerations from glass and debris. Radiation at 0.5–1 Gy causes mild ARS: nausea, fatigue, reduced blood cell counts. Most people recover with medical care.",
+        dose: "0.5 – 1 Gy",
+        impact: "The city of Severny at this distance was completely leveled in the actual 1961 test. Fatality rate is high due to structural collapse, though survival is possible in hardened shelters."
+      },
+      {
+        id: "moderate-damage",
+        name: "Moderate Structural Damage",
+        radius: 55000,
+        color: "#cccc00",
+        fillOpacity: 0.07,
+        description: "1–2 psi overpressure. Residential buildings suffer severe damage — walls crack, roofs collapse, windows shatter violently. Many wooden buildings are destroyed.",
+        symptoms: "Lacerations from flying glass (a leading injury mechanism). Radiation dose is sub-clinical for most but may increase long-term cancer risk. Burns from thermal flash possible for exposed skin.",
+        dose: "0.05 – 0.5 Gy",
+        impact: "Buildings are heavily damaged but not totally destroyed. Injuries are survivable with medical treatment. Flying glass fragments cause mass casualties even at this range."
+      },
+      {
+        id: "thermal-3rd",
+        name: "Thermal Radiation — 3rd-Degree Burns",
+        radius: 77000,
+        color: "#ee5500",
+        fillOpacity: 0.05,
+        description: "The thermal pulse delivers enough energy to cause third-degree (full-thickness) burns on exposed skin. Clothing may ignite. Dark surfaces absorb more heat and can start secondary fires.",
+        symptoms: "Full-thickness burns destroy all layers of skin and underlying tissue. Nerve endings are destroyed (initially painless), but surrounding areas have severe pain. High risk of infection, shock, and death without advanced burn care.",
+        dose: "Minimal direct radiation at this range",
+        impact: "Burns overwhelm medical capacity. A 50 Mt detonation could produce third-degree burns across an area of over 18,000 km². Mass fires and firestorms are possible if urban terrain is present."
+      },
+      {
+        id: "thermal-extended",
+        name: "Thermal Radiation — 2nd-Degree Burns",
+        radius: 100000,
+        color: "#cc4400",
+        fillOpacity: 0.04,
+        description: "At 100 km the thermal pulse can still cause second-degree burns on exposed skin and ignite flammable materials. The thermal flash lasts over a minute due to the enormous yield.",
+        symptoms: "Second-degree burns: blistering, severe pain, swelling. Healing takes weeks. If a large body surface area is affected, hospitalization is required. Flash blindness (temporary or permanent retinal burns) from looking toward the detonation.",
+        dose: "Negligible direct radiation",
+        impact: "At this distance the blast wave is weakened but still shatters windows, sending glass shrapnel indoors. The combination of burns and glass lacerations creates a mass casualty event even 100 km from the hypocenter."
+      }
+    ];
+
+    // ── Map ──
+    const map = L.map("map", {
+      center: HYPOCENTER,
+      zoom: 9,
+      zoomControl: true,
+      attributionControl: true
+    });
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://osm.org/copyright">OSM</a>',
+      subdomains: "abcd",
+      maxZoom: 19
+    }).addTo(map);
+
+    // Hypocenter marker
+    const hypocenterIcon = L.divIcon({
+      className: "",
+      html: `<div style="
+        width:16px;height:16px;background:#ff2200;border:2px solid #fff;
+        border-radius:50%;box-shadow:0 0 12px #ff2200, 0 0 30px rgba(255,34,0,0.4);
+      "></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
+
+    L.marker(HYPOCENTER, { icon: hypocenterIcon })
+      .addTo(map)
+      .bindPopup(
+        `<div style="font-size:13px;line-height:1.5">
+          <strong>Hypocenter</strong><br>
+          Atomic bomb detonation point<br>
+          <span style="color:#999;font-size:11px">34.3946&deg;N, 132.4543&deg;E<br>Above Shima Hospital, Hiroshima</span>
+        </div>`
+      );
+
+    // Draw zones (largest first so smaller ones render on top)
+    const circles = {};
+    [...ZONES].reverse().forEach(zone => {
+      circles[zone.id] = L.circle(HYPOCENTER, {
+        radius: zone.radius,
+        color: zone.color,
+        weight: 1.5,
+        fillColor: zone.color,
+        fillOpacity: zone.fillOpacity,
+        dashArray: zone.radius > 50000 ? "6 4" : null
+      }).addTo(map);
+    });
+
+    // ── Legend ──
+    const legend = L.control({ position: "bottomright" });
+    legend.onAdd = function () {
+      const div = L.DomUtil.create("div", "legend");
+      div.innerHTML = `<div class="legend-title">Tsar Bomba (50 Mt) Zones</div>`;
+      ZONES.forEach(z => {
+        const km = z.radius >= 1000 ? (z.radius / 1000) + " km" : z.radius + " m";
+        div.innerHTML += `<div><i style="background:${z.color}"></i>${z.name} — ${km}</div>`;
+      });
+      return div;
+    };
+    legend.addTo(map);
+
+    // ── Sidebar Buttons ──
+    const btnContainer = document.getElementById("zone-buttons");
+    const detailPanel = document.getElementById("zone-detail");
+    let activeZoneId = null;
+
+    ZONES.forEach(zone => {
+      const btn = document.createElement("button");
+      btn.className = "zone-btn";
+      btn.dataset.id = zone.id;
+      const km = zone.radius >= 1000 ? (zone.radius / 1000) + " km" : zone.radius + " m";
+      btn.innerHTML = `
+        <div class="zone-dot" style="background:${zone.color}"></div>
+        <div class="zone-btn-text">
+          <div class="zone-name">${zone.name}</div>
+          <div class="zone-radius">${km} radius</div>
+        </div>
+      `;
+      btn.addEventListener("click", () => selectZone(zone));
+      btnContainer.appendChild(btn);
+    });
+
+    function selectZone(zone) {
+      // Toggle off if clicking the same zone
+      if (activeZoneId === zone.id) {
+        activeZoneId = null;
+        detailPanel.classList.remove("open");
+        document.querySelectorAll(".zone-btn").forEach(b => b.classList.remove("active"));
+        map.flyTo(HYPOCENTER, 9, { duration: 0.8 });
+        resetCircleStyles();
+        return;
+      }
+
+      activeZoneId = zone.id;
+
+      // Highlight button
+      document.querySelectorAll(".zone-btn").forEach(b => {
+        b.classList.toggle("active", b.dataset.id === zone.id);
+      });
+
+      // Highlight circle
+      resetCircleStyles();
+      circles[zone.id].setStyle({ weight: 3, fillOpacity: zone.fillOpacity + 0.15 });
+
+      // Zoom to fit
+      map.flyToBounds(circles[zone.id].getBounds().pad(0.15), { duration: 0.8 });
+
+      // Show detail
+      detailPanel.innerHTML = `
+        <h2><span class="detail-dot" style="background:${zone.color}"></span>${zone.name}</h2>
+        <p>${zone.description}</p>
+        <div class="section-label">Symptoms &amp; Health Effects</div>
+        <p>${zone.symptoms}</p>
+        <div class="dose-badge">${zone.dose}</div>
+        <div class="section-label">Impact</div>
+        <p>${zone.impact}</p>
+      `;
+      detailPanel.classList.add("open");
+    }
+
+    function resetCircleStyles() {
+      ZONES.forEach(z => {
+        circles[z.id].setStyle({ weight: 1.5, fillOpacity: z.fillOpacity });
+      });
+    }
+  </script>
+</body>
+</html>
