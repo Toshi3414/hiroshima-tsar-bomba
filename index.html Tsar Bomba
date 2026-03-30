@@ -214,7 +214,7 @@
         radius: 3500,
         color: "#ff3300",
         fillOpacity: 0.35,
-        description: "hopefully this works. Everything within this radius is consumed by the nuclear fireball — temperatures exceed tens of millions of degrees. No material structure survives.",
+        description: "hopefully this works. keigoooo within this radius is consumed by the nuclear fireball — temperatures exceed tens of millions of degrees. No material structure survives.",
         symptoms: "Instant death. All matter — human tissue, steel, concrete — is vaporized within milliseconds. No remains are left.",
         dose: "> 10,000 Gy",
         impact: "Complete annihilation. The fireball extends 3.5 km in every direction from the detonation point. Within this zone the ground itself is turned to glass."
